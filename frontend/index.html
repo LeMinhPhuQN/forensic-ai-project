@@ -1,0 +1,2063 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real/Fake Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── TOKENS ── */
+:root {
+  --blue:       #2563eb;
+  --blue-light: #3b82f6;
+  --blue-dim:   #dbeafe;
+  --blue-xdim:  #eff6ff;
+  --green:      #16a34a;
+  --green-dim:  #dcfce7;
+  --red:        #dc2626;
+  --red-dim:    #fee2e2;
+  --amber:      #d97706;
+  --purple:     #7c3aed;
+
+  --bg:         #ffffff;
+  --surface:    #f8fafc;
+  --surface2:   #f1f5f9;
+  --border:     #e2e8f0;
+  --border2:    #cbd5e1;
+  --text:       #0f172a;
+  --text-2:     #334155;
+  --muted:      #64748b;
+  --dim:        #94a3b8;
+
+  --radius-xl:  20px;
+  --radius-lg:  16px;
+  --radius-md:  12px;
+  --radius-sm:  8px;
+  --radius-xs:  6px;
+
+  --shadow-sm:  0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md:  0 4px 16px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04);
+  --shadow-lg:  0 12px 40px rgba(15,23,42,0.10), 0 4px 12px rgba(15,23,42,0.06);
+
+  --font:       'Plus Jakarta Sans', sans-serif;
+  --mono:       'JetBrains Mono', monospace;
+
+  --header-h:   60px;
+}
+
+[data-theme="dark"] {
+  --bg:         #0a0f1e;
+  --surface:    #111827;
+  --surface2:   #1e2640;
+  --border:     #1e2d45;
+  --border2:    #2a3d5c;
+  --text:       #f1f5f9;
+  --text-2:     #cbd5e1;
+  --muted:      #64748b;
+  --dim:        #475569;
+  --blue-xdim:  #0c1a3a;
+  --blue-dim:   #1e3a6e;
+  --green-dim:  #052e16;
+  --red-dim:    #2d0a0a;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,0.5);
+}
+
+/* ── BASE ── */
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ── */
+header {
+  height: var(--header-h);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1rem;
+}
+
+[data-theme="dark"] header {
+  background: rgba(10,15,30,0.85);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.logo-mark {
+  width: 30px; height: 30px;
+  background: var(--blue);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.35);
+}
+
+.logo-sup {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-left: 2px;
+}
+
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 11.5px;
+  font-family: var(--mono);
+  color: var(--muted);
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+}
+.status-dot.online  { background: var(--green); box-shadow: 0 0 0 3px rgba(22,163,74,0.2); }
+.status-dot.error   { background: var(--red); }
+.status-dot.checking { background: var(--amber); animation: pulse-dot 1s ease-in-out infinite; }
+
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* Settings button */
+.btn-icon {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: all 0.15s;
+}
+.btn-icon:hover { background: var(--surface); color: var(--text); border-color: var(--border2); }
+
+/* Theme toggle */
+.theme-toggle {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  transition: all 0.15s;
+}
+.theme-toggle:hover { background: var(--surface); color: var(--text); }
+
+/* ── SETTINGS DRAWER ── */
+.settings-drawer {
+  position: fixed;
+  top: var(--header-h);
+  right: 1.5rem;
+  width: 320px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 1.25rem;
+  z-index: 200;
+  display: none;
+  animation: drawer-in 0.2s ease;
+}
+
+.settings-drawer.open { display: block; }
+
+@keyframes drawer-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.settings-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+.btn-ping {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  font-family: var(--font);
+}
+.btn-ping:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── MAIN ── */
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── SECTION HEADER ── */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.875rem;
+}
+
+.section-icon {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--blue-xdim);
+  border: 1px solid var(--blue-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.section-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+  font-family: var(--mono);
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover { box-shadow: var(--shadow-md); }
+
+.card-inner { padding: 1.5rem; }
+
+/* ── INPUT TABS ── */
+.input-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  margin-bottom: 1.25rem;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s;
+}
+
+.tab-btn.active {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-btn:not(.active):hover { color: var(--text-2); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 3rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface);
+  position: relative;
+}
+
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--blue-light);
+  background: var(--blue-xdim);
+}
+
+.drop-zone.has-image {
+  padding: 0;
+  border-style: solid;
+  border-color: var(--border);
+  background: var(--surface2);
+  cursor: default;
+}
+
+.upload-icon-wrap {
+  width: 52px; height: 52px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 22px;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+
+.drop-zone:hover .upload-icon-wrap {
+  border-color: var(--blue-light);
+  background: var(--blue-xdim);
+}
+
+.upload-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.upload-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+#file-input { display: none; }
+
+/* ── PASTE ZONE ── */
+.paste-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.paste-zone:hover, .paste-zone.active {
+  border-color: var(--blue-light);
+  background: var(--blue-xdim);
+}
+
+.paste-kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── CAMERA ZONE ── */
+.camera-zone {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface2);
+  position: relative;
+  min-height: 240px;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.camera-zone video {
+  width: 100%;
+  display: block;
+  border-radius: var(--radius-lg);
+}
+
+.camera-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+.btn-camera {
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-camera-start {
+  background: var(--blue);
+  color: white;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+.btn-camera-start:hover { background: var(--blue-light); box-shadow: 0 4px 12px rgba(37,99,235,0.4); }
+
+.btn-camera-capture {
+  background: white;
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.btn-camera-capture:hover { background: var(--surface); }
+
+.btn-camera-stop {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.btn-camera-stop:hover { color: var(--red); border-color: var(--red); }
+
+/* ── IMAGE PREVIEW ── */
+.img-preview-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.img-preview-wrap img {
+  width: 100%;
+  display: block;
+  border-radius: calc(var(--radius-xl) - 1px);
+  max-height: 420px;
+  object-fit: contain;
+  background: var(--surface2);
+}
+
+.img-meta {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.img-chip {
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--text-2);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] .img-chip {
+  background: rgba(10,15,30,0.8);
+  border-color: rgba(255,255,255,0.1);
+  color: var(--dim);
+}
+
+/* ── VERDICT ON IMAGE ── */
+.verdict-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(to top, rgba(15,23,42,0.96) 40%, transparent);
+  border-radius: 0 0 calc(var(--radius-xl) - 1px) calc(var(--radius-xl) - 1px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.verdict-label-text {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 4px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.verdict-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.verdict-value.real { color: #4ade80; }
+.verdict-value.fake { color: #f87171; }
+
+.verdict-conf-val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  text-align: right;
+}
+.verdict-conf-val.real { color: #4ade80; }
+.verdict-conf-val.fake { color: #f87171; }
+
+/* ── ACTIONS BAR ── */
+.actions-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 1.25rem;
+}
+
+.btn-analyze {
+  flex: 1;
+  padding: 13px;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-md);
+  background: var(--blue);
+  color: white;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.18s;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+
+.btn-analyze::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.12);
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+
+.btn-analyze:hover { background: #1d4ed8; box-shadow: 0 4px 16px rgba(37,99,235,0.4); }
+.btn-analyze:hover::after { opacity: 1; }
+.btn-analyze:active { transform: scale(0.985); }
+.btn-analyze:disabled {
+  background: var(--surface2);
+  color: var(--dim);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.btn-analyze:disabled:hover { background: var(--surface2); }
+
+.btn-reset {
+  padding: 13px 18px;
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-reset:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+
+/* ── LOADING BAR ── */
+.loading-bar {
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-top: 8px;
+  display: none;
+}
+.loading-bar.active { display: block; }
+
+.loading-fill {
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+  animation: sweep 1.5s ease-in-out infinite;
+  width: 35%;
+}
+
+@keyframes sweep {
+  0%   { transform: translateX(-200%); }
+  100% { transform: translateX(600%); }
+}
+
+/* ── ERROR BOX ── */
+.error-box {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--red-dim);
+  border: 1px solid rgba(220,38,38,0.2);
+  color: var(--red);
+  font-size: 13px;
+  font-family: var(--mono);
+  display: none;
+  margin-top: 10px;
+}
+.error-box.visible { display: block; }
+
+/* ── PIPELINE ── */
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .pipeline-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.pipe-step-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 10px;
+  background: var(--surface);
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pipe-step-card.active {
+  border-color: var(--blue);
+  background: var(--blue-xdim);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+.pipe-step-card.done {
+  border-color: rgba(22,163,74,0.3);
+  background: var(--green-dim);
+}
+
+.pipe-step-card.error {
+  border-color: rgba(220,38,38,0.3);
+  background: var(--red-dim);
+}
+
+.pipe-num-badge {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1.5px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--muted);
+  transition: all 0.2s;
+}
+
+.pipe-step-card.active  .pipe-num-badge { background: var(--blue); border-color: var(--blue); color: white; animation: spin-once 0.5s ease; }
+.pipe-step-card.done    .pipe-num-badge { background: var(--green); border-color: var(--green); color: white; }
+.pipe-step-card.error   .pipe-num-badge { background: var(--red); border-color: var(--red); color: white; }
+
+@keyframes spin-once {
+  from { transform: rotate(-180deg) scale(0.7); }
+  to   { transform: rotate(0deg) scale(1); }
+}
+
+.tick { display: inline-block; animation: pop-in 0.3s ease; }
+@keyframes pop-in { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.pipe-step-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  line-height: 1.3;
+}
+
+.pipe-step-desc {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--mono);
+  line-height: 1.4;
+}
+
+/* ── VERDICT HERO ── */
+.verdict-hero {
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--blue) 0%, #1d4ed8 100%);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 32px rgba(37,99,235,0.3);
+  color: white;
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.verdict-hero.visible { display: flex; }
+.verdict-hero.fake-bg {
+  background: linear-gradient(135deg, #dc2626 0%, #9b1c1c 100%);
+  box-shadow: 0 8px 32px rgba(220,38,38,0.3);
+}
+.verdict-hero.real-bg {
+  background: linear-gradient(135deg, #16a34a 0%, #14532d 100%);
+  box-shadow: 0 8px 32px rgba(22,163,74,0.3);
+}
+
+.verdict-hero-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  opacity: 0.7;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.verdict-hero-val {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.verdict-hero-conf {
+  font-size: 14px;
+  opacity: 0.8;
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+/* ── MODEL CARDS GRID ── */
+.model-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 520px) {
+  .model-cards { grid-template-columns: 1fr; }
+}
+
+/* ── MODEL CARD ── */
+.model-card-head {
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.model-card-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.model-badge {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.model-badge.real { background: var(--green-dim); color: var(--green); }
+.model-badge.fake { background: var(--red-dim); color: var(--red); }
+
+.model-card-body { padding: 1rem 1.25rem 1.25rem; }
+
+.prob-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.prob-row:last-child { margin-bottom: 0; }
+
+.prob-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.prob-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.prob-val {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.prob-val.real { color: var(--green); }
+.prob-val.fake { color: var(--red); }
+
+.prob-track {
+  height: 5px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.prob-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 0%;
+}
+.prob-fill.real { background: var(--green); }
+.prob-fill.fake { background: var(--red); }
+
+/* ── PLACEHOLDER ── */
+.placeholder-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 8px;
+  text-align: center;
+}
+
+.placeholder-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  color: var(--dim);
+}
+
+.placeholder-text {
+  font-size: 12.5px;
+  color: var(--dim);
+  font-family: var(--mono);
+}
+
+/* ── FEATURE BREAKDOWN ── */
+.feature-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feat-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue);
+  font-family: var(--mono);
+  margin-bottom: 6px;
+}
+
+.feat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  padding: 3px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.chip.accent {
+  border-color: rgba(37,99,235,0.25);
+  background: var(--blue-xdim);
+  color: var(--blue);
+}
+
+.feat-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.feat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin-top: 8px;
+}
+
+.feat-table tr { border-bottom: 1px solid var(--border); }
+.feat-table tr:last-child { border-bottom: none; }
+
+.feat-table td {
+  padding: 8px 4px;
+  vertical-align: middle;
+}
+
+.feat-table td:first-child { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.feat-table td:last-child  { color: var(--text); text-align: right; font-weight: 600; font-family: var(--mono); }
+
+/* ── VIS CARDS ── */
+.vis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 520px) {
+  .vis-grid { grid-template-columns: 1fr; }
+}
+
+.vis-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--mono);
+  padding: 0.875rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.vis-card-body { padding: 0.875rem 1rem 1rem; }
+
+/* ELA canvases */
+.ela-canvases {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.canvas-wrap-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+canvas {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: block;
+  max-width: 100%;
+}
+
+/* ELA stats */
+.ela-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.ela-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 8px;
+  text-align: center;
+}
+
+.ela-stat-name {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 3px;
+}
+
+.ela-stat-val {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--amber);
+}
+
+/* FFT bands */
+.fft-bands {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.fft-band {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.fft-band-name {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.fft-band-sub {
+  font-size: 9.5px;
+  color: var(--dim);
+  font-family: var(--mono);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* Histogram wraps */
+.hist-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  main { padding: 1.5rem 1rem 4rem; }
+  .vis-grid { grid-template-columns: 1fr; }
+  .fft-bands { grid-template-columns: 1fr; }
+  .ela-stats { grid-template-columns: repeat(2, 1fr); }
+  .verdict-hero-val { font-size: 2.2rem; }
+}
+
+/* ── FADE-IN REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: reveal-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes reveal-up {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── DIVIDER ── */
+hr.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.5rem 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header>
+  <a class="logo" href="#">
+    <div class="logo-mark">F</div>
+    <span style="color:var(--blue)">Real/Fake Detection</span>
+    <span class="logo-sup">v2</span>
+  </a>
+
+  <div class="header-right">
+    <div class="status-chip">
+      <div class="status-dot checking" id="status-dot"></div>
+      <span id="status-text">connecting…</span>
+    </div>
+
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" id="theme-btn">🌙</button>
+
+    <button class="btn-icon" onclick="toggleSettings()" title="API Settings" id="settings-btn">⚙️</button>
+  </div>
+</header>
+
+<!-- ═══════════ SETTINGS DRAWER ═══════════ -->
+<div class="settings-drawer" id="settings-drawer">
+  <div class="settings-title">⚙ API Configuration</div>
+  <div class="settings-row">
+    <input class="settings-input" id="api-url" type="text" value="http://localhost:8000" placeholder="http://localhost:8000">
+    <button class="btn-ping" onclick="checkServer()">Ping</button>
+  </div>
+</div>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main>
+
+  <!-- 1. INPUT SECTION -->
+  <div class="reveal" style="animation-delay:0.05s">
+    <div class="section-head">
+      <div class="section-icon">📸</div>
+      <div class="section-title">Ảnh đầu vào</div>
+    </div>
+
+    <div class="card">
+      <div class="card-inner">
+        <!-- Tabs -->
+        <div class="input-tabs">
+          <button class="tab-btn active" onclick="switchTab('upload')" id="tab-upload">
+            <span>📂</span> Upload
+          </button>
+          <button class="tab-btn" onclick="switchTab('paste')" id="tab-paste">
+            <span>📋</span> Paste
+          </button>
+          <button class="tab-btn" onclick="switchTab('camera')" id="tab-camera">
+            <span>📷</span> Camera
+          </button>
+        </div>
+
+        <!-- Upload panel -->
+        <div class="tab-panel active" id="panel-upload">
+          <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])">
+
+          <div id="upload-placeholder">
+            <div class="drop-zone" id="drop-zone" onclick="handleZoneClick()">
+              <div class="upload-icon-wrap">📁</div>
+              <div class="upload-title">Kéo thả hoặc bấm để chọn ảnh</div>
+              <div class="upload-sub">PNG · JPG · WEBP · BMP</div>
+            </div>
+          </div>
+
+          <div id="img-preview-container" style="display:none;">
+            <div class="drop-zone has-image" id="drop-zone-preview">
+              <div class="img-preview-wrap">
+                <img id="preview-img" src="" alt="preview">
+                <div class="img-meta">
+                  <div class="img-chip" id="img-size-badge">—</div>
+                </div>
+                <div class="verdict-overlay" id="verdict-overlay" style="display:none;">
+                  <div>
+                    <div class="verdict-label-text">Kết luận</div>
+                    <div class="verdict-value" id="verdict-text">—</div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div class="verdict-label-text">Confidence</div>
+                    <div class="verdict-conf-val" id="verdict-conf">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paste panel -->
+        <div class="tab-panel" id="panel-paste">
+          <div class="paste-zone" id="paste-zone" onclick="focusPasteZone()">
+            <div class="paste-kbd">
+              <span>Ctrl</span>+<span>V</span>
+            </div>
+            <div class="upload-title" style="font-size:14px;">Nhấn Ctrl+V để dán ảnh</div>
+            <div class="upload-sub" style="margin-top:6px;">hoặc copy ảnh từ bất kỳ nguồn nào</div>
+          </div>
+        </div>
+
+        <!-- Camera panel -->
+        <div class="tab-panel" id="panel-camera">
+          <div class="camera-zone" id="camera-zone">
+            <video id="camera-video" autoplay playsinline style="display:none;"></video>
+            <canvas id="camera-canvas" style="display:none;"></canvas>
+            <div id="camera-idle" style="text-align:center;">
+              <div style="font-size:36px;margin-bottom:12px;">📷</div>
+              <div style="font-size:14px;font-weight:600;color:var(--text-2);margin-bottom:6px;">Chụp ảnh trực tiếp</div>
+              <div style="font-size:12px;color:var(--muted);font-family:var(--mono);">Cần quyền truy cập camera</div>
+            </div>
+          </div>
+          <div class="camera-controls" id="camera-controls">
+            <button class="btn-camera btn-camera-start" id="btn-cam-start" onclick="startCamera()">Mở camera</button>
+            <button class="btn-camera btn-camera-capture" id="btn-cam-capture" onclick="capturePhoto()" style="display:none;">📸 Chụp</button>
+            <button class="btn-camera btn-camera-stop" id="btn-cam-stop" onclick="stopCamera()" style="display:none;">Tắt camera</button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-bar">
+          <button class="btn-analyze" id="btn-analyze" onclick="analyze()" disabled>
+            Phân tích ảnh
+          </button>
+          <button class="btn-reset" onclick="reset()">Xoá</button>
+        </div>
+
+        <div class="loading-bar" id="loading-bar">
+          <div class="loading-fill"></div>
+        </div>
+
+        <div class="error-box" id="error-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. PIPELINE STATUS -->
+  <div class="reveal" style="animation-delay:0.1s">
+    <div class="section-head">
+      <div class="section-icon">⚡</div>
+      <div class="section-title">Pipeline</div>
+    </div>
+
+    <div class="pipeline-grid">
+      <div class="pipe-step-card" id="step-0">
+        <div class="pipe-num-badge">1</div>
+        <div class="pipe-step-name">Preprocessing</div>
+        <div class="pipe-step-desc">Resize → RGB/Gray</div>
+      </div>
+      <div class="pipe-step-card" id="step-1">
+        <div class="pipe-num-badge">2</div>
+        <div class="pipe-step-name">Feature Extract</div>
+        <div class="pipe-step-desc">RAW · ELA · FFT · LBP · YCbCr</div>
+      </div>
+      <div class="pipe-step-card" id="step-2">
+        <div class="pipe-num-badge">3</div>
+        <div class="pipe-step-name">Scaler + PCA</div>
+        <div class="pipe-step-desc">StandardScaler → PCA</div>
+      </div>
+      <div class="pipe-step-card" id="step-3">
+        <div class="pipe-num-badge">4</div>
+        <div class="pipe-step-name">GDA</div>
+        <div class="pipe-step-desc">Gaussian Discriminant</div>
+      </div>
+      <div class="pipe-step-card" id="step-4">
+        <div class="pipe-num-badge">5</div>
+        <div class="pipe-step-name">LR</div>
+        <div class="pipe-step-desc">Logistic Regression</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. VERDICT HERO -->
+  <div class="reveal" style="animation-delay:0.15s" id="verdict-section" style="display:none;">
+    <div class="section-head">
+      <div class="section-icon">🔍</div>
+      <div class="section-title">Kết quả tổng hợp</div>
+    </div>
+
+    <div class="verdict-hero" id="verdict-hero">
+      <div class="verdict-hero-label">Ensemble verdict (GDA + LR average)</div>
+      <div class="verdict-hero-val" id="hero-verdict">—</div>
+      <div class="verdict-hero-conf" id="hero-conf">Confidence: —</div>
+    </div>
+  </div>
+
+  <!-- 4. MODEL RESULTS -->
+  <div class="reveal" style="animation-delay:0.2s">
+    <div class="section-head">
+      <div class="section-icon">🤖</div>
+      <div class="section-title">Kết quả mô hình</div>
+    </div>
+
+    <div class="model-cards">
+      <!-- GDA -->
+      <div class="card">
+        <div class="model-card-head">
+          <span class="model-card-title">GDA</span>
+          <span class="model-badge" id="gda-badge" style="display:none;"></span>
+        </div>
+        <div class="model-card-body">
+          <div id="gda-placeholder" class="placeholder-state">
+            <div class="placeholder-icon">◈</div>
+            <div class="placeholder-text">Chờ phân tích…</div>
+          </div>
+          <div id="gda-result" style="display:none;">
+            <div class="prob-row">
+              <div class="prob-header">
+                <span class="prob-label">REAL</span>
+                <span class="prob-val real" id="gda-real-val">0%</span>
+              </div>
+              <div class="prob-track"><div class="prob-fill real" id="gda-real-bar"></div></div>
+            </div>
+            <div class="prob-row">
+              <div class="prob-header">
+                <span class="prob-label">FAKE</span>
+                <span class="prob-val fake" id="gda-fake-val">0%</span>
+              </div>
+              <div class="prob-track"><div class="prob-fill fake" id="gda-fake-bar"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LR -->
+      <div class="card">
+        <div class="model-card-head">
+          <span class="model-card-title">Logistic Regression</span>
+          <span class="model-badge" id="lr-badge" style="display:none;"></span>
+        </div>
+        <div class="model-card-body">
+          <div id="lr-placeholder" class="placeholder-state">
+            <div class="placeholder-icon">◈</div>
+            <div class="placeholder-text">Chờ phân tích…</div>
+          </div>
+          <div id="lr-result" style="display:none;">
+            <div class="prob-row">
+              <div class="prob-header">
+                <span class="prob-label">REAL</span>
+                <span class="prob-val real" id="lr-real-val">0%</span>
+              </div>
+              <div class="prob-track"><div class="prob-fill real" id="lr-real-bar"></div></div>
+            </div>
+            <div class="prob-row">
+              <div class="prob-header">
+                <span class="prob-label">FAKE</span>
+                <span class="prob-val fake" id="lr-fake-val">0%</span>
+              </div>
+              <div class="prob-track"><div class="prob-fill fake" id="lr-fake-bar"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. VISUALIZATIONS -->
+  <div class="reveal" style="animation-delay:0.3s">
+    <div class="section-head">
+      <div class="section-icon">📊</div>
+      <div class="section-title">Feature Visualizations</div>
+    </div>
+
+    <div class="vis-grid">
+
+      <!-- ELA -->
+      <div class="card">
+        <div class="vis-card-title">ELA Analysis</div>
+        <div class="vis-card-body">
+          <div id="ela-placeholder" class="placeholder-state">
+            <div class="placeholder-icon">⌁</div>
+            <div class="placeholder-text">Tải ảnh để xem ELA</div>
+          </div>
+          <div id="ela-vis" style="display:none;">
+            <div class="ela-canvases">
+              <div>
+                <div class="canvas-wrap-label">Original</div>
+                <canvas id="canvas-orig"></canvas>
+              </div>
+              <div>
+                <div class="canvas-wrap-label">ELA diff ×10</div>
+                <canvas id="canvas-ela"></canvas>
+              </div>
+            </div>
+            <div class="ela-stats" id="ela-stats-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FFT -->
+      <div class="card">
+        <div class="vis-card-title">FFT Band Statistics</div>
+        <div class="vis-card-body">
+          <div id="fft-placeholder" class="placeholder-state">
+            <div class="placeholder-icon">⌁</div>
+            <div class="placeholder-text">Tải ảnh để xem FFT</div>
+          </div>
+          <div id="fft-vis" style="display:none;">
+            <div class="fft-bands">
+              <div class="fft-band">
+                <div class="fft-band-name">Low</div>
+                <canvas id="fft-canvas-low" width="72" height="36" style="margin:4px auto;"></canvas>
+                <div class="fft-band-sub" id="fft-low-stats"></div>
+              </div>
+              <div class="fft-band">
+                <div class="fft-band-name">Mid</div>
+                <canvas id="fft-canvas-mid" width="72" height="36" style="margin:4px auto;"></canvas>
+                <div class="fft-band-sub" id="fft-mid-stats"></div>
+              </div>
+              <div class="fft-band">
+                <div class="fft-band-name">High</div>
+                <canvas id="fft-canvas-high" width="72" height="36" style="margin:4px auto;"></canvas>
+                <div class="fft-band-sub" id="fft-high-stats"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LBP -->
+      <div class="card">
+        <div class="vis-card-title">LBP Histogram</div>
+        <div class="vis-card-body">
+          <div id="lbp-placeholder" class="placeholder-state">
+            <div class="placeholder-icon">⌁</div>
+            <div class="placeholder-text">Tải ảnh để xem LBP</div>
+          </div>
+          <div id="lbp-vis" style="display:none;">
+            <div class="hist-wrap">
+              <canvas id="lbp-chart" height="72"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YCbCr -->
+      <div class="card">
+        <div class="vis-card-title">YCbCr Distribution</div>
+        <div class="vis-card-body">
+          <div id="ycbcr-placeholder" class="placeholder-state">
+            <div class="placeholder-icon">⌁</div>
+            <div class="placeholder-text">Tải ảnh để xem YCbCr</div>
+          </div>
+          <div id="ycbcr-vis" style="display:none;">
+            <div class="hist-wrap">
+              <canvas id="ycbcr-chart" height="72"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── STATE ────────────────────────────────────────
+let currentFile  = null;
+let lastResult   = null;
+let cameraStream = null;
+
+// ─── THEME ────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isDark ? '🌙' : '☀️';
+}
+
+// ─── SETTINGS ─────────────────────────────────────
+function toggleSettings() {
+  document.getElementById('settings-drawer').classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+  const drawer = document.getElementById('settings-drawer');
+  const btn    = document.getElementById('settings-btn');
+  if (!drawer.contains(e.target) && !btn.contains(e.target)) {
+    drawer.classList.remove('open');
+  }
+});
+
+// ─── SERVER CHECK ─────────────────────────────────
+async function checkServer() {
+  const url = document.getElementById('api-url').value.trim();
+  setStatus('checking', 'connecting…');
+  try {
+    const r = await fetch(url + '/', { signal: AbortSignal.timeout(4000) });
+    r.ok ? setStatus('online', 'API online') : setStatus('error', 'API error ' + r.status);
+  } catch(e) {
+    setStatus('error', 'unreachable');
+  }
+}
+
+function setStatus(cls, txt) {
+  document.getElementById('status-dot').className = 'status-dot ' + cls;
+  document.getElementById('status-text').textContent = txt;
+}
+
+checkServer();
+
+// ─── TABS ─────────────────────────────────────────
+function switchTab(tab) {
+  ['upload','paste','camera'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('panel-' + t).classList.toggle('active', t === tab);
+  });
+  if (tab !== 'camera') stopCamera();
+}
+
+// ─── FILE UPLOAD ──────────────────────────────────
+function handleZoneClick() {
+  if (!currentFile) document.getElementById('file-input').click();
+}
+
+function handleFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  currentFile = file;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = document.getElementById('preview-img');
+    img.src = e.target.result;
+    img.onload = () => {
+      document.getElementById('img-size-badge').textContent =
+        img.naturalWidth + '×' + img.naturalHeight;
+      computeClientFeatures(img);
+    };
+    document.getElementById('upload-placeholder').style.display = 'none';
+    document.getElementById('img-preview-container').style.display = 'block';
+    document.getElementById('verdict-overlay').style.display = 'none';
+    document.getElementById('btn-analyze').disabled = false;
+    hideError();
+    resetResults();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── DRAG & DROP ──────────────────────────────────
+const dz = document.getElementById('drop-zone');
+if (dz) {
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) handleFile(f);
+  });
+}
+
+// ─── PASTE ────────────────────────────────────────
+function focusPasteZone() { document.getElementById('paste-zone').classList.add('active'); }
+
+document.addEventListener('paste', (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      handleFile(file);
+      switchTab('upload');
+      break;
+    }
+  }
+});
+
+document.getElementById('paste-zone').addEventListener('focus', focusPasteZone);
+document.getElementById('paste-zone').addEventListener('blur', () => {
+  document.getElementById('paste-zone').classList.remove('active');
+});
+
+// ─── CAMERA ───────────────────────────────────────
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('camera-video');
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    document.getElementById('camera-idle').style.display = 'none';
+    document.getElementById('btn-cam-start').style.display = 'none';
+    document.getElementById('btn-cam-capture').style.display = 'flex';
+    document.getElementById('btn-cam-stop').style.display = 'flex';
+  } catch(e) {
+    alert('Không thể truy cập camera: ' + e.message);
+  }
+}
+
+function capturePhoto() {
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+    stopCamera();
+    handleFile(file);
+    switchTab('upload');
+  }, 'image/jpeg', 0.92);
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  const video = document.getElementById('camera-video');
+  if (video) { video.srcObject = null; video.style.display = 'none'; }
+  const idle = document.getElementById('camera-idle');
+  if (idle) idle.style.display = 'block';
+  const s = document.getElementById('btn-cam-start');
+  const c = document.getElementById('btn-cam-capture');
+  const x = document.getElementById('btn-cam-stop');
+  if (s) s.style.display = 'flex';
+  if (c) c.style.display = 'none';
+  if (x) x.style.display = 'none';
+}
+
+// ─── RESET ────────────────────────────────────────
+function reset() {
+  currentFile = null; lastResult = null;
+  document.getElementById('upload-placeholder').style.display = 'block';
+  document.getElementById('img-preview-container').style.display = 'none';
+  document.getElementById('btn-analyze').disabled = true;
+  document.getElementById('verdict-overlay').style.display = 'none';
+  document.getElementById('file-input').value = '';
+
+  const vh = document.getElementById('verdict-hero');
+  vh.className = 'verdict-hero';
+  vh.style.display = 'none';
+  vh.classList.remove('visible');
+
+  resetResults();
+  resetSteps();
+  hideError();
+
+  ['ela-vis','fft-vis','lbp-vis','ycbcr-vis'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  ['ela-placeholder','fft-placeholder','lbp-placeholder','ycbcr-placeholder'].forEach(id => {
+    document.getElementById(id).style.display = 'flex';
+  });
+}
+
+function resetResults() {
+  ['gda','lr'].forEach(m => {
+    document.getElementById(m+'-placeholder').style.display = 'flex';
+    document.getElementById(m+'-result').style.display = 'none';
+    const b = document.getElementById(m+'-badge');
+    b.textContent = ''; b.className = 'model-badge'; b.style.display = 'none';
+    document.getElementById(m+'-real-bar').style.width = '0%';
+    document.getElementById(m+'-fake-bar').style.width = '0%';
+  });
+  const _g = document.getElementById('pca-gda-dims'); if (_g) _g.textContent = '—';
+  const _l = document.getElementById('pca-lr-dims');  if (_l) _l.textContent = '—';
+}
+
+function resetSteps() {
+  for (let i=0;i<5;i++) {
+    const s = document.getElementById('step-'+i);
+    s.classList.remove('active','done','error');
+    s.querySelector('.pipe-num-badge').textContent = (i+1);
+  }
+}
+
+// ─── ANALYZE ──────────────────────────────────────
+async function analyze() {
+  if (!currentFile) return;
+  const apiUrl = document.getElementById('api-url').value.trim();
+  setLoading(true);
+  hideError();
+  resetSteps();
+
+  try {
+    setStep(0, 'active');
+    await delay(120);
+
+    setStep(0, 'done'); setStep(1, 'active');
+    await delay(180);
+
+    const formData = new FormData();
+    formData.append('file', currentFile);
+
+    setStep(1, 'done'); setStep(2, 'active');
+
+    const res = await fetch(apiUrl + '/predict', {
+      method: 'POST',
+      body: formData,
+      signal: AbortSignal.timeout(30000)
+    });
+
+    setStep(2, 'done'); setStep(3, 'active');
+    await delay(80);
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    setStep(3, 'done'); setStep(4, 'active');
+    await delay(80);
+    setStep(4, 'done');
+
+    lastResult = data;
+    displayResults(data);
+
+  } catch(e) {
+    for (let i=0;i<5;i++) {
+      const s = document.getElementById('step-'+i);
+      if (s.classList.contains('active')) { setStep(i,'error'); break; }
+      if (!s.classList.contains('done'))  { setStep(i,'error'); break; }
+    }
+    showError(e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function displayResults(data) {
+  // PCA dims (elements removed from UI — skip safely)
+  const _pg = document.getElementById('pca-gda-dims');
+  const _pl = document.getElementById('pca-lr-dims');
+  if (_pg && _pl) {
+    _pg.textContent = data.pca_components ? data.pca_components.gda + ' dims' : '← model config';
+    _pl.textContent = data.pca_components ? data.pca_components.lr  + ' dims' : '← model config';
+  }
+
+  // GDA
+  const gR = data.gda.real, gF = data.gda.fake;
+  document.getElementById('gda-placeholder').style.display = 'none';
+  document.getElementById('gda-result').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('gda-real-bar').style.width = (gR*100).toFixed(1)+'%';
+    document.getElementById('gda-fake-bar').style.width = (gF*100).toFixed(1)+'%';
+  }, 50);
+  document.getElementById('gda-real-val').textContent = (gR*100).toFixed(1)+'%';
+  document.getElementById('gda-fake-val').textContent = (gF*100).toFixed(1)+'%';
+  const gdaV = gR > gF ? 'REAL' : 'FAKE';
+  const gdaBadge = document.getElementById('gda-badge');
+  gdaBadge.textContent = gdaV;
+  gdaBadge.className = 'model-badge ' + gdaV.toLowerCase();
+  gdaBadge.style.display = '';
+
+  // LR
+  const lR = data.logistic_regression.real, lF = data.logistic_regression.fake;
+  document.getElementById('lr-placeholder').style.display = 'none';
+  document.getElementById('lr-result').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('lr-real-bar').style.width = (lR*100).toFixed(1)+'%';
+    document.getElementById('lr-fake-bar').style.width = (lF*100).toFixed(1)+'%';
+  }, 50);
+  document.getElementById('lr-real-val').textContent = (lR*100).toFixed(1)+'%';
+  document.getElementById('lr-fake-val').textContent = (lF*100).toFixed(1)+'%';
+  const lrV = lR > lF ? 'REAL' : 'FAKE';
+  const lrBadge = document.getElementById('lr-badge');
+  lrBadge.textContent = lrV;
+  lrBadge.className = 'model-badge ' + lrV.toLowerCase();
+  lrBadge.style.display = '';
+
+  // Ensemble
+  const avgReal  = (gR + lR) / 2;
+  const avgFake  = (gF + lF) / 2;
+  const finalV   = avgReal > avgFake ? 'REAL' : 'FAKE';
+  const finalConf = Math.max(avgReal, avgFake);
+
+  // Verdict hero
+  const vh = document.getElementById('verdict-hero');
+  vh.className = 'verdict-hero visible ' + (finalV === 'REAL' ? 'real-bg' : 'fake-bg');
+  document.getElementById('hero-verdict').textContent  = finalV;
+  document.getElementById('hero-conf').textContent     = `Confidence: ${(finalConf*100).toFixed(1)}%`;
+
+  // On-image verdict
+  const verdictEl = document.getElementById('verdict-text');
+  const confEl    = document.getElementById('verdict-conf');
+  verdictEl.textContent = finalV;
+  verdictEl.className   = 'verdict-value ' + finalV.toLowerCase();
+  confEl.textContent    = (finalConf*100).toFixed(1) + '%';
+  confEl.className      = 'verdict-conf-val ' + finalV.toLowerCase();
+  document.getElementById('verdict-overlay').style.display = 'flex';
+
+  // Scroll to verdict
+  vh.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── HELPERS ──────────────────────────────────────
+function setStep(i, cls) {
+  const s = document.getElementById('step-'+i);
+  s.classList.remove('active','done','error');
+  if (cls) s.classList.add(cls);
+  const badge = s.querySelector('.pipe-num-badge');
+  if (cls === 'done')  badge.innerHTML = '<span class="tick">✓</span>';
+  else if (cls === 'error') badge.textContent = '!';
+  else badge.textContent = (i+1);
+}
+
+function setLoading(on) {
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = on;
+  btn.textContent = on ? 'Đang phân tích…' : 'Phân tích ảnh';
+  document.getElementById('loading-bar').classList.toggle('active', on);
+}
+
+function showError(msg) {
+  const b = document.getElementById('error-box');
+  b.textContent = '⚠ ' + msg;
+  b.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-box').classList.remove('visible');
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── CLIENT FEATURE VIS ───────────────────────────
+function computeClientFeatures(imgEl) {
+  const W = 256, H = 256;
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = W; offCanvas.height = H;
+  const offCtx = offCanvas.getContext('2d');
+  offCtx.drawImage(imgEl, 0, 0, W, H);
+
+  const cOrig = document.getElementById('canvas-orig');
+  cOrig.width = W; cOrig.height = H; cOrig.style.width = '100%';
+  cOrig.getContext('2d').drawImage(imgEl, 0, 0, W, H);
+
+  offCanvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const img2 = new Image();
+    img2.onload = () => {
+      const cEla = document.getElementById('canvas-ela');
+      cEla.width = W; cEla.height = H; cEla.style.width = '100%';
+      const ctxEla = cEla.getContext('2d');
+      const tmp = document.createElement('canvas');
+      tmp.width = W; tmp.height = H;
+      tmp.getContext('2d').drawImage(img2, 0, 0, W, H);
+      const d1 = offCtx.getImageData(0,0,W,H).data;
+      const d2 = tmp.getContext('2d').getImageData(0,0,W,H).data;
+      const elaData = ctxEla.createImageData(W,H);
+      let sumR=0,sumG=0,sumB=0,maxR=0,maxG=0,maxB=0;
+      const n = W*H;
+      for (let i=0;i<d1.length;i+=4) {
+        const dr=Math.abs(d1[i]-d2[i]), dg=Math.abs(d1[i+1]-d2[i+1]), db=Math.abs(d1[i+2]-d2[i+2]);
+        elaData.data[i]  =Math.min(255,dr*10);
+        elaData.data[i+1]=Math.min(255,dg*10);
+        elaData.data[i+2]=Math.min(255,db*10);
+        elaData.data[i+3]=255;
+        sumR+=dr; sumG+=dg; sumB+=db;
+        if(dr>maxR)maxR=dr; if(dg>maxG)maxG=dg; if(db>maxB)maxB=db;
+      }
+      ctxEla.putImageData(elaData,0,0);
+      const mR=(sumR/n).toFixed(2), mG=(sumG/n).toFixed(2), mB=(sumB/n).toFixed(2);
+      const sg = document.getElementById('ela-stats-grid');
+      sg.innerHTML = [
+        {n:'Mean R',v:mR,c:'#ef4444'},{n:'Mean G',v:mG,c:'#22c55e'},{n:'Mean B',v:mB,c:'#3b82f6'},
+        {n:'Max R',v:maxR,c:'#ef4444'},{n:'Max G',v:maxG,c:'#22c55e'},{n:'Max B',v:maxB,c:'#3b82f6'},
+      ].map(x=>`<div class="ela-stat">
+        <div class="ela-stat-name" style="color:${x.c}">${x.n}</div>
+        <div class="ela-stat-val">${x.v}</div>
+      </div>`).join('');
+      URL.revokeObjectURL(url);
+      document.getElementById('ela-placeholder').style.display='none';
+      document.getElementById('ela-vis').style.display='block';
+    };
+    img2.src = url;
+  }, 'image/jpeg', 0.85);
+
+  computeFFTVis(offCtx, W, H);
+  computeLBPVis(offCtx, W, H);
+  computeYCbCrVis(offCtx, W, H);
+}
+
+function computeFFTVis(ctx, W, H) {
+  const data = ctx.getImageData(0,0,W,H).data;
+  const gray = new Float32Array(W*H);
+  for (let i=0,p=0;i<data.length;i+=4,p++)
+    gray[p] = 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+
+  const LOW_R=30, MID_R=80, cx=W/2, cy=H/2;
+  let lowVals=[],midVals=[],hiVals=[];
+  const bsz=8;
+  for (let by=0;by<H;by+=bsz) {
+    for (let bx=0;bx<W;bx+=bsz) {
+      let sum=0,sum2=0,cnt=0;
+      for (let dy=0;dy<bsz&&by+dy<H;dy++)
+        for (let dx=0;dx<bsz&&bx+dx<W;dx++) {
+          const v=gray[(by+dy)*W+(bx+dx)]; sum+=v; sum2+=v*v; cnt++;
+        }
+      const mean=sum/cnt, variance=sum2/cnt-mean*mean;
+      const freq=Math.log(1+variance);
+      const dist=Math.sqrt((bx+bsz/2-cx)**2+(by+bsz/2-cy)**2);
+      if(dist<=LOW_R) lowVals.push(freq);
+      else if(dist<=MID_R) midVals.push(freq);
+      else hiVals.push(freq);
+    }
+  }
+  const stat=arr=>{
+    if(!arr.length) return{mean:0,std:0,max:0};
+    const m=arr.reduce((a,b)=>a+b,0)/arr.length;
+    const s=Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length);
+    return{mean:m.toFixed(3),std:s.toFixed(3),max:Math.max(...arr).toFixed(3)};
+  };
+  const ls=stat(lowVals),ms=stat(midVals),hs=stat(hiVals);
+  const canvIds=['fft-canvas-low','fft-canvas-mid','fft-canvas-high'];
+  const arrs=[lowVals,midVals,hiVals];
+  const colors=['#3b82f6','#8b5cf6','#f59e0b'];
+  const statEls=['fft-low-stats','fft-mid-stats','fft-high-stats'];
+  const stats=[ls,ms,hs];
+  canvIds.forEach((cid,idx)=>{
+    const c=document.getElementById(cid);
+    const cx2=c.getContext('2d');
+    const arr=arrs[idx];
+    cx2.clearRect(0,0,c.width,c.height);
+    if(!arr.length) return;
+    const maxV=Math.max(...arr)||1;
+    cx2.beginPath();
+    cx2.strokeStyle=colors[idx];
+    cx2.lineWidth=1.5;
+    const step=Math.max(1,Math.floor(arr.length/20));
+    const pts=arr.filter((_,i)=>i%step===0).slice(0,20);
+    pts.forEach((v,i)=>{
+      const x=(i/(pts.length-1||1))*c.width;
+      const y=c.height-(v/maxV)*c.height*0.9-2;
+      i===0?cx2.moveTo(x,y):cx2.lineTo(x,y);
+    });
+    cx2.stroke();
+    document.getElementById(statEls[idx]).textContent=`μ=${stats[idx].mean} σ=${stats[idx].std}`;
+  });
+  document.getElementById('fft-placeholder').style.display='none';
+  document.getElementById('fft-vis').style.display='block';
+}
+
+function computeLBPVis(ctx,W,H) {
+  const data=ctx.getImageData(0,0,W,H).data;
+  const gray=new Uint8Array(W*H);
+  for(let i=0,p=0;i<data.length;i+=4,p++)
+    gray[p]=(0.299*data[i]+0.587*data[i+1]+0.114*data[i+2])|0;
+  const P=8,R=1;
+  const offsets=Array.from({length:P},(_,k)=>{
+    const ang=2*Math.PI*k/P;
+    return[Math.round(R*Math.cos(ang)),Math.round(-R*Math.sin(ang))];
+  });
+  const bins=new Float32Array(P+2);
+  let cnt=0;
+  for(let y=R;y<H-R;y++){
+    for(let x=R;x<W-R;x++){
+      const center=gray[y*W+x];
+      const bits=offsets.map(([dx,dy])=>gray[(y+dy)*W+(x+dx)]>=center?1:0);
+      let transitions=0;
+      for(let i=0;i<P;i++) transitions+=bits[i]!==bits[(i+1)%P]?1:0;
+      const bin=transitions<=2?bits.reduce((a,b)=>a+b,0):P+1;
+      bins[bin]++; cnt++;
+    }
+  }
+  if(cnt>0) for(let i=0;i<bins.length;i++) bins[i]/=cnt;
+  const c=document.getElementById('lbp-chart');
+  c.style.width='100%';
+  c.width=c.parentElement.offsetWidth||340;
+  const ctx2=c.getContext('2d');
+  const bw=c.width/bins.length;
+  const maxV=Math.max(...bins)||1;
+  ctx2.clearRect(0,0,c.width,c.height);
+  bins.forEach((v,i)=>{
+    const x=i*bw;
+    const h2=(v/maxV)*(c.height-4);
+    ctx2.fillStyle=`hsl(${210+i*14},70%,55%)`;
+    ctx2.fillRect(x+1,c.height-h2,bw-2,h2);
+    ctx2.fillStyle='#94a3b8';
+    ctx2.font='8px JetBrains Mono';
+    ctx2.textAlign='center';
+    ctx2.fillText(i,x+bw/2,c.height-1);
+  });
+  document.getElementById('lbp-placeholder').style.display='none';
+  document.getElementById('lbp-vis').style.display='block';
+}
+
+function computeYCbCrVis(ctx,W,H) {
+  const data=ctx.getImageData(0,0,W,H).data;
+  const crHist=new Float32Array(32), cbHist=new Float32Array(32);
+  const n=W*H;
+  for(let i=0;i<data.length;i+=4){
+    const r=data[i],g=data[i+1],b=data[i+2];
+    const Cr=128+0.5*r-0.4187*g-0.0813*b;
+    const Cb=128-0.1687*r-0.3313*g+0.5*b;
+    const bi_cr=Math.min(31,Math.floor(Cr/8));
+    const bi_cb=Math.min(31,Math.floor(Cb/8));
+    if(bi_cr>=0) crHist[bi_cr]++;
+    if(bi_cb>=0) cbHist[bi_cb]++;
+  }
+  for(let i=0;i<32;i++){crHist[i]/=n;cbHist[i]/=n;}
+  const c=document.getElementById('ycbcr-chart');
+  c.style.width='100%';
+  c.width=c.parentElement.offsetWidth||340;
+  const ctx2=c.getContext('2d');
+  ctx2.clearRect(0,0,c.width,c.height);
+  const bw=c.width/64;
+  const maxV=Math.max(...crHist,...cbHist)||1;
+  crHist.forEach((v,i)=>{
+    const h2=(v/maxV)*(c.height-4);
+    ctx2.fillStyle='#f43f5e';
+    ctx2.fillRect(i*bw+1,c.height-h2,bw-1,h2);
+  });
+  cbHist.forEach((v,i)=>{
+    const h2=(v/maxV)*(c.height-4);
+    ctx2.fillStyle='#3b82f6';
+    ctx2.fillRect((32+i)*bw+1,c.height-h2,bw-1,h2);
+  });
+  ctx2.font='9px JetBrains Mono';
+  ctx2.fillStyle='#f43f5e';
+  ctx2.fillText('Cr',4,11);
+  ctx2.fillStyle='#3b82f6';
+  ctx2.fillText('Cb',c.width/2+4,11);
+  document.getElementById('ycbcr-placeholder').style.display='none';
+  document.getElementById('ycbcr-vis').style.display='block';
+}
+</script>
+</body>
+</html>
