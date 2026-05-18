@@ -64,7 +64,40 @@ setattr(sys.modules['__main__'], 'GDA', GDA)
 # =====================================================
 # LOAD MODELS
 # =====================================================
-pipeline = joblib.load("model.pkl")
+import os
+import gdown
+import joblib
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+model_path = os.path.join(BASE_DIR, "model.pkl")
+lr_model_path = os.path.join(BASE_DIR, "logistic_regression_model.pkl")
+
+if not os.path.exists(model_path):
+    gdown.download(
+        "https://drive.google.com/uc?id=1Ske3vEc8mfkuqFru2HlM0rYl2aIbFlKc",
+        model_path,
+        quiet=False
+    )
+
+if not os.path.exists(lr_model_path):
+    gdown.download(
+        "https://drive.google.com/uc?id=1U4ETY7h7HCApJXx76PQRjkyeYcmzj9LR",
+        lr_model_path,
+        quiet=False
+    )
+
+pipeline = joblib.load(model_path)
+lr_data = joblib.load(lr_model_path)
+
+import os
+import joblib
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+pipeline = joblib.load(os.path.join(BASE_DIR, "model.pkl"))
+lr_data = joblib.load(os.path.join(BASE_DIR, "logistic_regression_model.pkl"))
+
 gda_model = pipeline["model"]
 scaler = pipeline["scaler"]
 pca = pipeline["pca"]
@@ -73,7 +106,6 @@ K_COMPONENTS = cfg["k_components"]
 
 print("GDA loaded")
 
-lr_data = joblib.load("logistic_regression_model.pkl")
 lr_model = lr_data["model"]
 lr_pca_scaler = lr_data["pca_output_scaler"]
 LR_K_COMPONENTS = lr_data["best_params"]["k_components"]
