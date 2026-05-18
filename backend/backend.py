@@ -90,14 +90,6 @@ if not os.path.exists(lr_model_path):
 pipeline = joblib.load(model_path)
 lr_data = joblib.load(lr_model_path)
 
-import os
-import joblib
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-pipeline = joblib.load(os.path.join(BASE_DIR, "model.pkl"))
-lr_data = joblib.load(os.path.join(BASE_DIR, "logistic_regression_model.pkl"))
-
 gda_model = pipeline["model"]
 scaler = pipeline["scaler"]
 pca = pipeline["pca"]
