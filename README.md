@@ -124,13 +124,68 @@ frontend/index.html
 
 ## Run Application
 
-### Start Backend
+### 1. Start Backend
 
 Open terminal:
 
 ```bash
 cd backend
 uvicorn backend:app --reload
+```
+
+---
+
+### 2. Configure Frontend API
+
+Before running the frontend, open:
+
+```bash
+frontend/index.html
+```
+
+Go to:
+
+```bash
+Line 1170
+```
+Replace the API URL with your backend URL.
+
+---
+
+### 3. Run Frontend
+
+You can run the frontend using:
+
+#### Option 1 — VS Code Live Server (Recommended)
+
+Install:
+
+- Live Server extension in VS Code
+
+Then:
+
+- Right click `index.html`
+- Select:
+
+```text
+Open with Live Server
+```
+
+Frontend will run automatically in your browser.
+
+---
+
+#### Option 2 — Open HTML Directly
+
+Open:
+
+```bash
+frontend/index.html
+```
+
+directly in your browser.
+
+---
 
 ## Author
 
