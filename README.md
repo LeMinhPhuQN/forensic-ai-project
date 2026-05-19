@@ -122,6 +122,16 @@ frontend/index.html
 
 ---
 
+## Run Application
+
+### Start Backend
+
+Open terminal:
+
+```bash
+cd backend
+uvicorn backend:app --reload
+
 ## Author
 
 **LeMinhPhuQN**
